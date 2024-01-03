@@ -1,7 +1,6 @@
 const progress_line = document.getElementById('progress-line');
 
 
-
 // ceate the progress bar
 for (let i = 0; i < 6; i++) {
     const progress_bar = document.createElement('div');
@@ -25,16 +24,18 @@ function resetProgressBar() {
 }
 
 const entropyThreshold = 36;
-const varianceThreshold = 400; 
+const varianceThreshold = 500; 
+let password_info = {}
 
 // Function to calculate entropy of a password
 function calculateEntropy(password) {
-    const uniqueCharacters = [...new Set(password)];
     const passwordLength = password.length;
-    const characterSetSize = uniqueCharacters.length;
+    // is the sum of 26 lowercase letters, 26 uppercase letters, 10 digits, and 29 special characters
+    const poolSize = 91;
 
-    // Calculate entropy using the formula: H = log2(S^L)
-    const entropy = Math.log2(Math.pow(characterSetSize, passwordLength));
+    // Calculate entropy using the formula: H = log2(R^L)
+    const entropy = Math.log2(Math.pow(poolSize, passwordLength));
+    password_info['entropy'] = entropy;
 
     return entropy;
 }
@@ -54,10 +55,12 @@ function calculateVariance(password) {
 
     // Calculate the variance using the formula: Variance = sum of squared differences / N
     const variance = squaredDifferencesSum / passwordLength;
+    password_info['variance'] = variance;
 
     return variance;
 }
 
+// Function to check if password contains all properties
 function containsAllProperties(inputString) {
     // Check for numbers, capital letters, and special characters
     var containsNumber = /\d/.test(inputString);
@@ -86,9 +89,15 @@ function isWeak(password) {
     }
     const entropy = calculateEntropy(password);
     const variance = calculateVariance(password);
-    console.log(entropy, variance);
+    console.log("entropy: ", entropy, "variance: ", variance);
     if (entropy < entropyThreshold && variance < varianceThreshold) {
-        password_suggestions['password_complexity'] = 'please make sure your password is complex enough, try adding more characters';
+        if (entropy < entropyThreshold) {
+            password_suggestions['password_entropy'] = 'Your password is simple, but try adding more characters to make it stronger';
+        }
+        if (variance < varianceThreshold) {
+            password_suggestions['password_variance'] = 'Your password variance is bad, but try make the password characters more random';
+        }
+        is_medium = true;
         is_weak = true;
     }
     return is_weak;
@@ -105,8 +114,13 @@ function isMedium(password) {
     }
     const entropy = calculateEntropy(password);
     const variance = calculateVariance(password);
-    if ((entropy >= entropyThreshold && entropy < entropyThreshold + 14)|| (variance >= varianceThreshold && variance < varianceThreshold + 200)) {
-        password_suggestions['password_complexity'] = 'password complexity is good, but try adding more characters to make it stronger';
+    if ((variance >= varianceThreshold && variance < varianceThreshold + 200) || (entropy >= entropyThreshold && entropy < entropyThreshold + 24)) {
+        if (entropy >= entropyThreshold && entropy < entropyThreshold + 24) {
+            password_suggestions['password_entropy'] = 'Your password is not complex enough, but try adding more characters to make it stronger';
+        }
+        if (variance >= varianceThreshold && variance < varianceThreshold + 200) {
+            password_suggestions['password_variance'] = 'Your password variance is not bad, but try make the password characters more random';
+        }
         is_medium = true;
     }
     return is_medium;
@@ -118,7 +132,7 @@ function isStrong(password) {
     let is_strong = false;
     const entropy = calculateEntropy(password);
     const variance = calculateVariance(password);
-    if (entropy >= entropyThreshold + 14 || variance >= varianceThreshold + 200) {
+    if (entropy >= entropyThreshold + 24 && variance >= varianceThreshold + 200) {
         password_suggestions['password_complexity'] = 'Your password is strong, good job!, password with large entropy and variance are hard to crack';
         is_strong = true;
     }
@@ -141,7 +155,24 @@ function assessPasswordStrength(password) {
 }
 
 
-// create function to customize the progress bar
+// Function to show password suggestions
+function showPasswordSuggestions() {
+    const password_suggestions_container = document.getElementById('password-suggestions-container');
+    password_suggestions_container.innerHTML = '';
+    password_suggestions_container.innerHTML += `<p>Entropy: ${password_info['entropy'].toFixed(2)} and variance: ${password_info['variance'].toFixed(2)}</p>`;
+    password_suggestions_container.innerHTML += '<h3>Password Suggestions</h3>';
+    password_suggestions_container.innerHTML += '<ul id="password-suggestions-list"></ul>';
+    const password_suggestions_list = document.getElementById('password-suggestions-list');
+    for (let key in password_suggestions) {
+        const password_suggestion = document.createElement('li');
+        password_suggestion.innerText = password_suggestions[key];
+        password_suggestion.className = 'password-suggestion';
+        password_suggestions_list.appendChild(password_suggestion);
+    }
+}
+
+
+// Function to customize the progress bar
 function customizeProgressBar(password_type) {
     const strength_text = document.getElementById('strength-text');
     if (password_type == 'strong') {
@@ -169,18 +200,21 @@ function customizeProgressBar(password_type) {
 }
 
 
+// Submit form event listener
 const form = document.getElementById('form');
 form.addEventListener('submit', (e) => {
     e.preventDefault();
+    password_suggestions = {};
     resetProgressBar();
     const password = form.password.value;
     let password_type =  assessPasswordStrength(password);
     customizeProgressBar(password_type);
+    showPasswordSuggestions();
 });
 
 
 
-// create show password button
+// Create show password button
 const input_icon = document.querySelector('.input-icon');
 const input = document.getElementById('password-input');
 
@@ -193,4 +227,6 @@ input_icon.addEventListener('click', () => {
         input_icon.className = 'fa fa-eye input-icon';
     }
 });
+
+
 
